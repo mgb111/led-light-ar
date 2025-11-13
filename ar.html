@@ -15,7 +15,7 @@
   </style>
 </head>
 <body>
-  <button id="enter">Enter AR</button>
+  <button id="enter" disabled>Enter AR</button>
   <div id="overlay"><div id="msg">Move your phone to scan the wall, then tap to place the bulb. Ensure good lighting and textured surfaces.</div></div>
   <div id="ui" style="display:none;">
     <button id="lightOn">Light ON</button>
@@ -95,17 +95,37 @@
     lightOffBtn.addEventListener('click', ()=> setLight(false));
     resetBtn.addEventListener('click', ()=> { hasPlaced = false; lightPlane.visible = false; });
 
-    // Start AR
-    enterBtn.addEventListener('click', async () => {
-      if (!navigator.xr) {
-        alert('WebXR not available. Use Chrome on an ARCore-capable Android device.');
+    // Capability checks and Start AR
+    (async function initXR() {
+      const isSecure = window.isSecureContext;
+      if (!isSecure) {
+        document.getElementById('msg').textContent = 'This page must be served over HTTPS for WebXR to work.';
+        overlay.style.display = 'flex';
+        return;
+      }
+      if (!('xr' in navigator) || !navigator.xr) {
+        document.getElementById('msg').textContent = 'WebXR not available. Use Chrome on an ARCore-capable Android device.';
+        overlay.style.display = 'flex';
         return;
       }
       try {
+        const ok = await navigator.xr.isSessionSupported('immersive-ar');
+        if (!ok) {
+          document.getElementById('msg').textContent = 'AR not supported on this device/browser. Update Chrome and Google Play Services for AR.';
+          overlay.style.display = 'flex';
+          return;
+        }
+        enterBtn.disabled = false;
+      } catch (e) {
+        document.getElementById('msg').textContent = 'Unable to query WebXR support.';
+        overlay.style.display = 'flex';
+      }
+    })();
+
+    enterBtn.addEventListener('click', async () => {
+      try {
         const session = await navigator.xr.requestSession('immersive-ar', {
-          requiredFeatures: ['hit-test'],
-          optionalFeatures: ['dom-overlay'],
-          domOverlay: { root: document.body }
+          requiredFeatures: ['hit-test']
         });
         await onSessionStarted(session);
       } catch (e) {
