@@ -12,9 +12,10 @@
     body {
       font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
       margin: 0;
-      height: 100vh;
-      display: grid;
-      place-items: center;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
       background: #111;
       color: #fff;
     }
@@ -101,7 +102,12 @@
     On mobile tap the AR icon to place the model in your real world. For iOS Quick Look provide a USDZ and add ios-src="path/to/model.usdz"
   </div>
 
-  <div id="light-controls" style="display:flex; gap:8px; justify-content:center; margin-top:10px;">
+  <div id="ar-variants" style="display:flex; gap:8px; justify-content:center; position:fixed; left:50%; transform:translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0) + 64px); z-index: 9999;">
+    <button id="ar-on">View in AR (Light ON)</button>
+    <button id="ar-off">View in AR (Light OFF)</button>
+  </div>
+
+  <div id="light-controls" style="display:flex; gap:8px; justify-content:center; position:fixed; left:50%; transform:translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0) + 12px); z-index: 9999;">
     <button id="light-on">Light ON</button>
     <button id="light-off">Light OFF</button>
   </div>
@@ -122,9 +128,15 @@
     const wallSpot = document.getElementById('wall-spot');
     const hsOn = document.getElementById('hs-on');
     const hsOff = document.getElementById('hs-off');
+    const arOnBtn = document.getElementById('ar-on');
+    const arOffBtn = document.getElementById('ar-off');
 
     let targetMaterials = [];
     let isLightOn = false;
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    // TODO: Replace these with your actual USDZ file URLs
+    const USDZ_ON_URL = '';
+    const USDZ_OFF_URL = '';
 
     mv.addEventListener('load', () => {
       try {
@@ -160,6 +172,21 @@
     offBtn.addEventListener('click', () => setEmissive(false));
     hsOn.addEventListener('click', () => setEmissive(true));
     hsOff.addEventListener('click', () => setEmissive(false));
+
+    function openARVariant(on) {
+      if (isIOS) {
+        const url = on ? USDZ_ON_URL : USDZ_OFF_URL;
+        if (!url) {
+          alert('USDZ URL is not set for this variant. Please provide the USDZ file URL in the code.');
+          return;
+        }
+        mv.setAttribute('ios-src', url);
+      }
+      mv.activateAR?.();
+    }
+
+    arOnBtn.addEventListener('click', () => openARVariant(true));
+    arOffBtn.addEventListener('click', () => openARVariant(false));
 
     mv.addEventListener('ar-status', (e) => {
       const s = e.detail.status;
