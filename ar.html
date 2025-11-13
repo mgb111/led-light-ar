@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LED Bulb AR (WebXR)</title>
+  <style>
+    html, body { height: 100%; margin: 0; background: #000; color: #fff; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+    #ui { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px; display: flex; gap: 8px; justify-content: center; z-index: 3; }
+    #ui button { padding: 8px 12px; border-radius: 8px; border: 0; background: #1e293b; color: #fff; }
+    #overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; text-align: center; background: rgba(0,0,0,0.6); z-index: 2; padding: 24px; }
+    #msg { max-width: 540px; line-height: 1.5; }
+    #enter { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 12px 18px; border-radius: 12px; border: 0; background: #10b981; color: #00150f; font-weight: 700; z-index: 4; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <button id="enter">Enter AR</button>
+  <div id="overlay"><div id="msg">Move your phone to scan the wall, then tap to place the bulb. Ensure good lighting and textured surfaces.</div></div>
+  <div id="ui" style="display:none;">
+    <button id="lightOn">Light ON</button>
+    <button id="lightOff">Light OFF</button>
+    <button id="reset">Reposition</button>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+    import {GLTFLoader} from 'https://unpkg.com/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
+
+    // Core
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.xr.enabled = true;
+    document.body.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+
+    // Subtle environment light so model is visible when OFF
+    scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+    const dir = new THREE.DirectionalLight(0xffffff, 0.4);
+    dir.position.set(1, 1, 1);
+    scene.add(dir);
+
+    // Light "decal" plane to simulate light on wall
+    const lightTexture = new THREE.CanvasTexture(makeRadialLightCanvas());
+    lightTexture.wrapS = lightTexture.wrapT = THREE.ClampToEdgeWrapping;
+    const lightMat = new THREE.MeshBasicMaterial({ map: lightTexture, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.9 });
+    const lightPlane = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.6), lightMat);
+    lightPlane.visible = false;
+    scene.add(lightPlane);
+
+    // GLB model
+    const MODEL_URL = 'https://pub-e46fd816b4ee497fb2f639f180c4df20.r2.dev/light_led_bulb.glb';
+    const loader = new GLTFLoader();
+    let bulb = null;
+    let emissiveTargets = [];
+
+    loader.load(MODEL_URL, (gltf) => {
+      bulb = gltf.scene;
+      // Normalize scale if huge/small
+      bulb.scale.setScalar(1);
+      // Default orientation: face -Z. Rotate to look mounted on a wall when facing user.
+      bulb.rotation.set(0, -Math.PI/2, 0);
+      scene.add(bulb);
+      emissiveTargets = [];
+      bulb.traverse((o) => {
+        if (o.isMesh && o.material) {
+          const m = o.material;
+          if (!m.emissive) m.emissive = new THREE.Color(0x000000);
+          if (m.emissiveIntensity === undefined) m.emissiveIntensity = 1.0;
+          // Heuristic: select likely glass/bulb materials
+          const name = (o.name + ' ' + (m.name||'')).toLowerCase();
+          if (/bulb|glass|emissive|lamp|light/.test(name)) emissiveTargets.push(m);
+        }
+      });
+      setLight(false);
+    }, (xhr)=>{}, (err)=>{ console.warn('GLB load error', err); });
+
+    // XR session state
+    let xrRefSpace = null;
+    let hitTestSource = null;
+    let hasPlaced = false;
+
+    // UI
+    const enterBtn = document.getElementById('enter');
+    const overlay = document.getElementById('overlay');
+    const ui = document.getElementById('ui');
+    const lightOnBtn = document.getElementById('lightOn');
+    const lightOffBtn = document.getElementById('lightOff');
+    const resetBtn = document.getElementById('reset');
+
+    lightOnBtn.addEventListener('click', ()=> setLight(true));
+    lightOffBtn.addEventListener('click', ()=> setLight(false));
+    resetBtn.addEventListener('click', ()=> { hasPlaced = false; lightPlane.visible = false; });
+
+    // Start AR
+    enterBtn.addEventListener('click', async () => {
+      if (!navigator.xr) {
+        alert('WebXR not available. Use Chrome on an ARCore-capable Android device.');
+        return;
+      }
+      try {
+        const session = await navigator.xr.requestSession('immersive-ar', {
+          requiredFeatures: ['hit-test'],
+          optionalFeatures: ['dom-overlay'],
+          domOverlay: { root: document.body }
+        });
+        await onSessionStarted(session);
+      } catch (e) {
+        alert('Failed to start AR: ' + e.message);
+      }
+    });
+
+    async function onSessionStarted(session) {
+      renderer.xr.setReferenceSpaceType('local');
+      await renderer.xr.setSession(session);
+
+      xrRefSpace = await session.requestReferenceSpace('viewer');
+      const viewerSpace = xrRefSpace;
+      hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+
+      enterBtn.style.display = 'none';
+      overlay.style.display = 'flex';
+      ui.style.display = 'flex';
+      setTimeout(()=> overlay.style.display = 'none', 2500);
+
+      session.addEventListener('end', onSessionEnded);
+      session.addEventListener('select', onSelect);
+
+      renderer.setAnimationLoop(render);
+      window.addEventListener('resize', onResize);
+    }
+
+    function onSessionEnded() {
+      renderer.setAnimationLoop(null);
+      enterBtn.style.display = '';
+      ui.style.display = 'none';
+      overlay.style.display = 'none';
+      hitTestSource = null; xrRefSpace = null; hasPlaced = false; lightPlane.visible = false;
+    }
+
+    function onResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    // Place on tap
+    function onSelect() { hasPlaced = false; /* next valid hit will place */ }
+
+    function render(timestamp, frame) {
+      const session = renderer.xr.getSession();
+      if (frame && session && hitTestSource) {
+        const refSpace = renderer.xr.getReferenceSpace();
+        const hits = frame.getHitTestResults(hitTestSource);
+        if (hits.length) {
+          const hit = hits[0];
+          const pose = hit.getPose(refSpace);
+          if (pose) {
+            // Position
+            const p = pose.transform.position;
+            const m = new THREE.Matrix4().fromArray(pose.transform.matrix ?? pose.transform); // polyfill safety
+            const pos = new THREE.Vector3(p.x, p.y, p.z);
+
+            // Face the camera; assume wall if user points at wall
+            const cam = renderer.xr.getCamera(camera);
+            const toCam = new THREE.Vector3().copy(cam.position).sub(pos).normalize();
+
+            if (!hasPlaced && bulb) {
+              bulb.position.copy(pos);
+              // Orient so bulb "points" toward camera (simulate wall mount)
+              const y = new THREE.Vector3(0, 1, 0);
+              const z = toCam.clone();
+              const x = new THREE.Vector3().crossVectors(y, z).normalize();
+              const rot = new THREE.Matrix4().makeBasis(x, y, z).extractRotation(new THREE.Matrix4().makeBasis(x, y, z));
+              bulb.quaternion.setFromRotationMatrix(rot);
+              // Offset a bit toward camera so it sits just off the wall
+              bulb.position.add(toCam.clone().multiplyScalar(0.02));
+            }
+
+            // Light decal plane: align to face camera and sit on wall at same spot
+            if (!hasPlaced) {
+              lightPlane.position.copy(pos).add(toCam.clone().multiplyScalar(0.005));
+              lightPlane.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1), toCam);
+              lightPlane.visible = isLightOn;
+              hasPlaced = true;
+            }
+          }
+        }
+      }
+      renderer.render(scene, camera);
+    }
+
+    function setLight(on) {
+      // Emissive on bulb
+      emissiveTargets.forEach(m => {
+        m.emissive.set(on ? 0xFFF4C8 : 0x000000);
+        m.emissiveIntensity = on ? 1.8 : 1.0;
+      });
+      // Decal visibility
+      lightPlane.visible = on && hasPlaced;
+      isLightOn = on;
+    }
+
+    function makeRadialLightCanvas() {
+      const c = document.createElement('canvas');
+      c.width = c.height = 512;
+      const ctx = c.getContext('2d');
+      const g = ctx.createRadialGradient(256, 256, 0, 256, 256, 256);
+      g.addColorStop(0.0, 'rgba(255,244,200,0.65)');
+      g.addColorStop(0.35, 'rgba(255,244,200,0.35)');
+      g.addColorStop(0.65, 'rgba(255,244,200,0.12)');
+      g.addColorStop(1.0, 'rgba(0,0,0,0.0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0,0,512,512);
+      return c;
+    }
+  </script>
+</body>
+</html>
