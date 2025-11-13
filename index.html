@@ -82,6 +82,16 @@
                mix-blend-mode: screen; opacity:0.9;">
       </div>
 
+      <!-- Hotspot controls so buttons are visible in AR -->
+      <div id="hs-on" slot="hotspot-on" data-position="0.10 -0.12 0.10" data-normal="0 0 1" data-visibility-attribute="visible"
+           style="display:none;">
+        <button style="padding:8px 12px; border-radius:10px; border:0; background:#10b981; color:#00150f; font-weight:700;">Light ON</button>
+      </div>
+      <div id="hs-off" slot="hotspot-off" data-position="-0.10 -0.12 0.10" data-normal="0 0 1" data-visibility-attribute="visible"
+           style="display:none;">
+        <button style="padding:8px 12px; border-radius:10px; border:0; background:#1f2937; color:#fff; font-weight:700;">Light OFF</button>
+      </div>
+
   <!-- Soft glow overlay to suggest light throw (visual aid; cannot light real world) -->
   <div id="light-glow" style="position:fixed; inset:0; pointer-events:none; display:none; z-index:9998; background: radial-gradient( circle at 50% 40%, rgba(255,244,200,0.35) 0%, rgba(255,244,200,0.15) 25%, rgba(255,244,200,0.06) 45%, rgba(0,0,0,0) 70% )"></div>
     </model-viewer>
@@ -110,6 +120,8 @@
     const onBtn = document.getElementById('light-on');
     const offBtn = document.getElementById('light-off');
     const wallSpot = document.getElementById('wall-spot');
+    const hsOn = document.getElementById('hs-on');
+    const hsOff = document.getElementById('hs-off');
 
     let targetMaterials = [];
     let isLightOn = false;
@@ -146,6 +158,8 @@
 
     onBtn.addEventListener('click', () => setEmissive(true));
     offBtn.addEventListener('click', () => setEmissive(false));
+    hsOn.addEventListener('click', () => setEmissive(true));
+    hsOff.addEventListener('click', () => setEmissive(false));
 
     mv.addEventListener('ar-status', (e) => {
       const s = e.detail.status;
@@ -154,12 +168,18 @@
         setTimeout(() => { overlay.style.display = 'none'; }, 3000);
         // Default light OFF at start; user can toggle ON
         setEmissive(false);
+        // Show AR hotspots buttons in session
+        hsOn.style.display = 'block';
+        hsOff.style.display = 'block';
       } else if (s === 'failed') {
         overlay.textContent = 'AR not available. Enable camera permission and update Google Play Services for AR.';
         overlay.style.display = 'flex';
       } else if (s === 'session-ended' || s === 'not-presenting') {
         overlay.style.display = 'none';
         glow.style.display = 'none';
+        // Hide AR hotspots buttons when out of session
+        hsOn.style.display = 'none';
+        hsOff.style.display = 'none';
       }
     });
   </script>
