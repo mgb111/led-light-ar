@@ -55,14 +55,10 @@
       camera-controls
       reveal="interaction"
       exposure="1"
-      shadow-intensity="0"
+      shadow-intensity="1"
       ar
-      ar-modes="scene-viewer webxr quick-look"
-      ar-scale="fixed"
-      ar-placement="wall"
-      orientation="0deg -90deg 0deg"
-      disable-tap
-      minimum-render-scale="0.5"
+      ar-modes="webxr scene-viewer quick-look"
+      ar-scale="auto"
       environment-image="neutral"
       interaction-prompt="auto"
       style="background: transparent;">
@@ -78,52 +74,5 @@
   </div>
 
   
-
-  <!-- Optional: simple script to show a friendly message if AR is not supported -->
-  <script>
-    const mv = document.querySelector('model-viewer');
-    let arActive = false;
-    let lastBeta = null;
-    let orientationLocked = false;
-
-    function applyWall() {
-      mv.setAttribute('ar-placement', 'wall');
-      mv.setAttribute('orientation', '0deg -90deg 0deg');
-    }
-
-    function applyCeiling() {
-      mv.setAttribute('ar-placement', 'wall');
-      mv.setAttribute('orientation', '180deg -90deg 0deg');
-    }
-
-    function updateFromOrientation(beta) {
-      if (beta == null) return;
-      if (beta < 0) {
-        applyCeiling();
-      } else {
-        applyWall();
-      }
-    }
-
-    window.addEventListener('deviceorientation', (e) => {
-      lastBeta = e.beta;
-    }, true);
-
-    mv.addEventListener('ar-status', (e) => {
-      if (e.detail.status === 'session-started') {
-        arActive = true;
-        orientationLocked = false;
-        updateFromOrientation(lastBeta);
-        orientationLocked = true;
-      } else if (e.detail.status === 'session-ended' || e.detail.status === 'not-presenting') {
-        arActive = false;
-        orientationLocked = false;
-      }
-    });
-
-    mv.addEventListener('error', (e) => {
-      console.warn('model-viewer error', e.detail);
-    });
-  </script>
 </body>
 </html>
