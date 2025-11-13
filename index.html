@@ -59,6 +59,8 @@
       ar
       ar-modes="scene-viewer quick-look webxr"
       ar-scale="auto"
+      ar-placement="wall"
+      orientation="0deg 90deg 0deg"
       environment-image="neutral"
       interaction-prompt="auto"
       style="background: transparent;">
@@ -76,6 +78,9 @@
   <!-- Optional: simple script to show a friendly message if AR is not supported -->
   <script>
     const mv = document.querySelector('model-viewer');
+    const wallBtn = document.getElementById('wall-btn');
+    const ceilingBtn = document.getElementById('ceiling-btn');
+
     mv.addEventListener('ar-status', (e) => {
       // ar-status events report "not-presenting", "session-started", "session-ended", "failed"
       // no action needed here but this shows how to listen to events
