@@ -47,8 +47,11 @@ function stripPunctualLights(document) {
   });
 }
 
-async function writeGLB(document, outPath) {
+async function writeGLB(document, outPath, { registerEmissiveStrength = false } = {}) {
   const io = new NodeIO();
+  if (registerEmissiveStrength) {
+    try { io.registerExtensions([KHRMaterialsEmissiveStrength]); } catch {}
+  }
   await io.write(outPath, document);
 }
 
@@ -84,7 +87,7 @@ async function main() {
       m.setExtension('KHR_materials_emissive_strength', es);
     });
   } catch {}
-  await writeGLB(onDoc, OUT_ON);
+  await writeGLB(onDoc, OUT_ON, { registerEmissiveStrength: true });
   console.log(`Wrote ${OUT_ON}`);
 
   console.log('Done.');
