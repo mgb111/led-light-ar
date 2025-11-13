@@ -58,7 +58,7 @@
       shadow-intensity="1"
       ar
       ar-modes="webxr scene-viewer quick-look"
-      ar-scale="auto"
+      ar-scale="fixed"
       ar-placement="wall"
       orientation="0deg -90deg 0deg"
       environment-image="neutral"
@@ -82,6 +82,7 @@
     const mv = document.querySelector('model-viewer');
     let arActive = false;
     let lastBeta = null;
+    let orientationLocked = false;
 
     function applyWall() {
       mv.setAttribute('ar-placement', 'wall');
@@ -104,15 +105,17 @@
 
     window.addEventListener('deviceorientation', (e) => {
       lastBeta = e.beta;
-      if (arActive) updateFromOrientation(lastBeta);
     }, true);
 
     mv.addEventListener('ar-status', (e) => {
       if (e.detail.status === 'session-started') {
         arActive = true;
+        orientationLocked = false;
         updateFromOrientation(lastBeta);
+        orientationLocked = true;
       } else if (e.detail.status === 'session-ended' || e.detail.status === 'not-presenting') {
         arActive = false;
+        orientationLocked = false;
       }
     });
 
