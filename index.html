@@ -69,11 +69,19 @@
       <div slot="poster" style="background:#333; color:#fff; height:100%; display:flex; align-items:center; justify-content:center;">
         Loading 3D model
       </div>
+
+  <!-- Soft glow overlay to suggest light throw (visual aid; cannot light real world) -->
+  <div id="light-glow" style="position:fixed; inset:0; pointer-events:none; display:none; z-index:9998; background: radial-gradient( circle at 50% 40%, rgba(255,244,200,0.35) 0%, rgba(255,244,200,0.15) 25%, rgba(255,244,200,0.06) 45%, rgba(0,0,0,0) 70% )"></div>
     </model-viewer>
   </div>
 
   <div class="hint">
     On mobile tap the AR icon to place the model in your real world. For iOS Quick Look provide a USDZ and add ios-src="path/to/model.usdz"
+  </div>
+
+  <div id="light-controls" style="display:flex; gap:8px; justify-content:center; margin-top:10px;">
+    <button id="light-on">Light ON</button>
+    <button id="light-off">Light OFF</button>
   </div>
 
   <div id="ar-overlay" style="position:fixed; inset:0; background:rgba(0,0,0,0.6); color:#fff; display:none; align-items:center; justify-content:center; text-align:center; padding:24px; z-index:9999;">
@@ -86,17 +94,58 @@
   <script>
     const mv = document.querySelector('model-viewer');
     const overlay = document.getElementById('ar-overlay');
+    const glow = document.getElementById('light-glow');
+    const onBtn = document.getElementById('light-on');
+    const offBtn = document.getElementById('light-off');
+
+    let targetMaterials = [];
+    let isLightOn = false;
+
+    mv.addEventListener('load', () => {
+      try {
+        const mats = mv.model?.materials || [];
+        // Heuristic: pick materials likely to be the bulb/glass; fallback to all
+        targetMaterials = mats.filter(m => /bulb|glass|emissive|lamp|light/i.test(m.name));
+        if (targetMaterials.length === 0) targetMaterials = mats;
+      } catch (e) {
+        targetMaterials = [];
+      }
+    });
+
+    function setEmissive(on) {
+      isLightOn = on;
+      const emissive = on ? [1.0, 0.95, 0.8] : [0, 0, 0];
+      try {
+        (targetMaterials || []).forEach(m => {
+          if (typeof m.setEmissiveFactor === 'function') {
+            m.setEmissiveFactor(emissive);
+          } else {
+            // Fallback for older scene-graph versions
+            m.emissiveFactor = emissive;
+          }
+        });
+      } catch {}
+      glow.style.display = on ? 'block' : 'none';
+      // Slightly increase exposure when on, keep modest to avoid washout
+      mv.setAttribute('exposure', on ? '1.1' : '1');
+    }
+
+    onBtn.addEventListener('click', () => setEmissive(true));
+    offBtn.addEventListener('click', () => setEmissive(false));
 
     mv.addEventListener('ar-status', (e) => {
       const s = e.detail.status;
       if (s === 'session-started') {
         overlay.style.display = 'flex';
         setTimeout(() => { overlay.style.display = 'none'; }, 3000);
+        // Default light OFF at start; user can toggle ON
+        setEmissive(false);
       } else if (s === 'failed') {
         overlay.textContent = 'AR not available. Enable camera permission and update Google Play Services for AR.';
         overlay.style.display = 'flex';
       } else if (s === 'session-ended' || s === 'not-presenting') {
         overlay.style.display = 'none';
+        glow.style.display = 'none';
       }
     });
   </script>
