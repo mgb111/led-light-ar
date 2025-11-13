@@ -70,6 +70,18 @@
         Loading 3D model
       </div>
 
+      <!-- AR light spot on wall (hotspot projected into 3D) -->
+      <div
+        id="wall-spot"
+        slot="hotspot-spot"
+        data-position="0 0 0.12"
+        data-normal="0 0 1"
+        data-visibility-attribute="visible"
+        style="display:none; width:320px; height:320px; border-radius:50%;
+               background: radial-gradient(circle, rgba(255,244,200,0.55) 0%, rgba(255,244,200,0.28) 35%, rgba(255,244,200,0.10) 60%, rgba(0,0,0,0) 85%);
+               mix-blend-mode: screen; opacity:0.9;">
+      </div>
+
   <!-- Soft glow overlay to suggest light throw (visual aid; cannot light real world) -->
   <div id="light-glow" style="position:fixed; inset:0; pointer-events:none; display:none; z-index:9998; background: radial-gradient( circle at 50% 40%, rgba(255,244,200,0.35) 0%, rgba(255,244,200,0.15) 25%, rgba(255,244,200,0.06) 45%, rgba(0,0,0,0) 70% )"></div>
     </model-viewer>
@@ -97,6 +109,7 @@
     const glow = document.getElementById('light-glow');
     const onBtn = document.getElementById('light-on');
     const offBtn = document.getElementById('light-off');
+    const wallSpot = document.getElementById('wall-spot');
 
     let targetMaterials = [];
     let isLightOn = false;
@@ -126,6 +139,7 @@
         });
       } catch {}
       glow.style.display = on ? 'block' : 'none';
+      if (wallSpot) wallSpot.style.display = on ? 'block' : 'none';
       // Slightly increase exposure when on, keep modest to avoid washout
       mv.setAttribute('exposure', on ? '1.1' : '1');
     }
