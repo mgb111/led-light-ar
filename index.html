@@ -60,7 +60,7 @@
       ar-modes="webxr scene-viewer quick-look"
       ar-scale="auto"
       ar-placement="wall"
-      orientation="0deg 90deg 0deg"
+      orientation="0deg -90deg 0deg"
       environment-image="neutral"
       interaction-prompt="auto"
       style="background: transparent;">
@@ -85,12 +85,12 @@
 
     function applyWall() {
       mv.setAttribute('ar-placement', 'wall');
-      mv.setAttribute('orientation', '0deg 90deg 0deg');
+      mv.setAttribute('orientation', '0deg -90deg 0deg');
     }
 
     function applyCeiling() {
       mv.setAttribute('ar-placement', 'wall');
-      mv.setAttribute('orientation', '180deg 0deg 0deg');
+      mv.setAttribute('orientation', '180deg -90deg 0deg');
     }
 
     function updateFromOrientation(beta) {
