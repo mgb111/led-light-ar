@@ -54,7 +54,11 @@
       src="https://pub-e46fd816b4ee497fb2f639f180c4df20.r2.dev/light_led_bulb.glb"
       alt="GE RX8 recessed can light"
       camera-controls
-      reveal="interaction"
+      reveal="auto"
+      loading="eager"
+      crossorigin="anonymous"
+      camera-target="auto"
+      camera-orbit="0deg 80deg 120%"
       exposure="1"
       shadow-intensity="1"
       ar
@@ -119,6 +123,8 @@
     </div>
   </div>
 
+  <div id="load-status" style="position:fixed; left:50%; transform:translateX(-50%); top:12px; background:rgba(0,0,0,0.7); color:#fff; padding:8px 12px; border-radius:8px; font-size:13px; display:none; z-index:10000;"></div>
+
   <script>
     const mv = document.querySelector('model-viewer');
     const overlay = document.getElementById('ar-overlay');
@@ -130,6 +136,7 @@
     const hsOff = document.getElementById('hs-off');
     const arOnBtn = document.getElementById('ar-on');
     const arOffBtn = document.getElementById('ar-off');
+    const loadStatus = document.getElementById('load-status');
 
     let targetMaterials = [];
     let isLightOn = false;
@@ -139,6 +146,7 @@
     const USDZ_OFF_URL = '';
 
     mv.addEventListener('load', () => {
+      loadStatus.style.display = 'none';
       try {
         const mats = mv.model?.materials || [];
         // Heuristic: pick materials likely to be the bulb/glass; fallback to all
@@ -147,6 +155,22 @@
       } catch (e) {
         targetMaterials = [];
       }
+    });
+
+    mv.addEventListener('progress', (ev) => {
+      const { totalProgress } = ev.detail;
+      if (totalProgress < 1) {
+        loadStatus.textContent = `Loading model… ${Math.round(totalProgress * 100)}%`;
+        loadStatus.style.display = 'block';
+      } else {
+        loadStatus.style.display = 'none';
+      }
+    });
+
+    mv.addEventListener('error', (ev) => {
+      console.error('model-viewer error:', ev.detail?.message || ev);
+      loadStatus.textContent = 'Failed to load model. If hosted on another domain, ensure CORS is enabled.';
+      loadStatus.style.display = 'block';
     });
 
     function setEmissive(on) {
