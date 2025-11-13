@@ -75,16 +75,38 @@
     On mobile tap the AR icon to place the model in your real world. For iOS Quick Look provide a USDZ and add ios-src="path/to/model.usdz"
   </div>
 
+  <div id="mount-controls" style="display:flex; gap:8px; justify-content:center; margin-top:8px;">
+    <button id="wall-btn">Wall mount</button>
+    <button id="ceiling-btn">Ceiling mount</button>
+  </div>
+
   <!-- Optional: simple script to show a friendly message if AR is not supported -->
   <script>
     const mv = document.querySelector('model-viewer');
     const wallBtn = document.getElementById('wall-btn');
     const ceilingBtn = document.getElementById('ceiling-btn');
 
+    let currentMode = 'wall';
+
+    function applyWall() {
+      currentMode = 'wall';
+      mv.setAttribute('ar-placement', 'wall');
+      mv.setAttribute('orientation', '0deg 90deg 0deg');
+    }
+
+    function applyCeiling() {
+      currentMode = 'ceiling';
+      mv.setAttribute('ar-placement', 'wall');
+      mv.setAttribute('orientation', '180deg 0deg 0deg');
+    }
+
+    wallBtn.addEventListener('click', applyWall);
+    ceilingBtn.addEventListener('click', applyCeiling);
+
     mv.addEventListener('ar-status', (e) => {
-      // ar-status events report "not-presenting", "session-started", "session-ended", "failed"
-      // no action needed here but this shows how to listen to events
-      // console.log('AR status', e.detail.status);
+      if (e.detail.status === 'session-started') {
+        if (currentMode === 'wall') applyWall(); else applyCeiling();
+      }
     });
 
     mv.addEventListener('error', (e) => {
