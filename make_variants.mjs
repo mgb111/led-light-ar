@@ -11,6 +11,7 @@ const OUT_OFF = 'light_off.glb';
 const OUT_ON = 'light_on.glb';
 
 const WARM_WHITE = [1.0, 0.95, 0.8];
+const PURE_WHITE = [1.0, 1.0, 1.0];
 
 async function loadGLBFromURL(url) {
   const res = await fetch(url);
@@ -76,14 +77,13 @@ async function main() {
   console.log('Creating ON variant...');
   const onDoc = baseDoc.clone();
   stripPunctualLights(onDoc);
-  setEmissive(findTargetMaterials(onDoc), WARM_WHITE);
+  const targetsOn = findTargetMaterials(onDoc);
+  setEmissive(targetsOn, PURE_WHITE);
   // Apply emissive strength extension to boost brightness
   try {
     const ext = onDoc.createExtension(KHRMaterialsEmissiveStrength);
-    const root = onDoc.getRoot();
-    const mats = root.listMaterials();
-    mats.forEach(m => {
-      const es = ext.createEmissiveStrength().setEmissiveStrength(2.5);
+    targetsOn.forEach(m => {
+      const es = ext.createEmissiveStrength().setEmissiveStrength(4.0);
       m.setExtension('KHR_materials_emissive_strength', es);
     });
   } catch {}
