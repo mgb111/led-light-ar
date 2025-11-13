@@ -51,7 +51,7 @@
       model-viewer will show an AR button when AR is available on the device.
     -->
     <model-viewer
-      src="https://pub-e46fd816b4ee497fb2f639f180c4df20.r2.dev/light_led_bulb.glb"
+      src="./light_off.glb"
       alt="GE RX8 recessed can light"
       camera-controls
       reveal="auto"
@@ -233,6 +233,8 @@
         }
         mv.setAttribute('ios-src', url);
       }
+      // Ensure the GLB source matches the chosen variant before entering AR
+      try { mv.src = on ? './light_on.glb' : './light_off.glb'; } catch {}
       mv.activateAR?.();
     }
 

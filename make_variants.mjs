@@ -4,6 +4,7 @@
 // - light_on.glb (warm white emissive)
 
 import { NodeIO } from '@gltf-transform/core';
+import { KHRMaterialsEmissiveStrength } from '@gltf-transform/extensions';
 
 const SOURCE_URL = 'https://pub-e46fd816b4ee497fb2f639f180c4df20.r2.dev/light_led_bulb.glb';
 const OUT_OFF = 'light_off.glb';
@@ -60,6 +61,11 @@ async function main() {
   const offDoc = baseDoc.clone();
   stripPunctualLights(offDoc);
   setEmissive(findTargetMaterials(offDoc), [0, 0, 0]);
+  // Remove emissive strength extension if present
+  try {
+    const ext = offDoc.getRoot().listExtensionsUsed().find(e => (e?.extensionName||'').toLowerCase() === 'khr_materials_emissive_strength');
+    if (ext) offDoc.getRoot().removeExtension(ext);
+  } catch {}
   await writeGLB(offDoc, OUT_OFF);
   console.log(`Wrote ${OUT_OFF}`);
 
@@ -68,6 +74,16 @@ async function main() {
   const onDoc = baseDoc.clone();
   stripPunctualLights(onDoc);
   setEmissive(findTargetMaterials(onDoc), WARM_WHITE);
+  // Apply emissive strength extension to boost brightness
+  try {
+    const ext = onDoc.createExtension(KHRMaterialsEmissiveStrength);
+    const root = onDoc.getRoot();
+    const mats = root.listMaterials();
+    mats.forEach(m => {
+      const es = ext.createEmissiveStrength().setEmissiveStrength(2.5);
+      m.setExtension('KHR_materials_emissive_strength', es);
+    });
+  } catch {}
   await writeGLB(onDoc, OUT_ON);
   console.log(`Wrote ${OUT_ON}`);
 
