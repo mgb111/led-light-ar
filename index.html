@@ -76,6 +76,31 @@
     On mobile tap the AR icon to place the model in your real world. For iOS Quick Look provide a USDZ and add ios-src="path/to/model.usdz"
   </div>
 
+  <div id="ar-overlay" style="position:fixed; inset:0; background:rgba(0,0,0,0.6); color:#fff; display:none; align-items:center; justify-content:center; text-align:center; padding:24px; z-index:9999;">
+    <div style="max-width: 520px; font-size: 16px; line-height:1.4;">
+      Hold your phone steady and slowly pan to scan the wall.
+      Look for the reticle to lock on, then tap to place.
+    </div>
+  </div>
+
+  <script>
+    const mv = document.querySelector('model-viewer');
+    const overlay = document.getElementById('ar-overlay');
+
+    mv.addEventListener('ar-status', (e) => {
+      const s = e.detail.status;
+      if (s === 'session-started') {
+        overlay.style.display = 'flex';
+        setTimeout(() => { overlay.style.display = 'none'; }, 3000);
+      } else if (s === 'failed') {
+        overlay.textContent = 'AR not available. Enable camera permission and update Google Play Services for AR.';
+        overlay.style.display = 'flex';
+      } else if (s === 'session-ended' || s === 'not-presenting') {
+        overlay.style.display = 'none';
+      }
+    });
+  </script>
+
   
 </body>
 </html>
