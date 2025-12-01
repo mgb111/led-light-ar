@@ -166,8 +166,8 @@
 
     function setEmissive(on) {
       isLightOn = on;
-      // Stronger emissive color so the bulb looks clearly ON
-      const emissive = on ? [3.0, 2.8, 2.2] : [0, 0, 0];
+      // Bright blue emissive so the bulb looks clearly ON
+      const emissive = on ? [0.4, 1.8, 4.0] : [0, 0, 0];
       try {
         (targetMaterials || []).forEach(m => {
           if (typeof m.setEmissiveFactor === 'function') {
@@ -181,7 +181,7 @@
       glow.style.display = on ? 'block' : 'none';
       if (wallSpot) wallSpot.style.display = on ? 'block' : 'none';
       // Increase exposure more when ON to reinforce brightness of the bulb
-      mv.setAttribute('exposure', on ? '1.5' : '1');
+      mv.setAttribute('exposure', on ? '1.7' : '1');
     }
 
     onBtn.addEventListener('click', () => setEmissive(true));
