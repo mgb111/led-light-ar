@@ -106,16 +106,6 @@
     On mobile tap the AR icon to place the model in your real world. For iOS Quick Look provide a USDZ and add ios-src="path/to/model.usdz"
   </div>
 
-  <!-- iOS-only Quick Look link for a .reality file with in-AR toggle behavior -->
-  <div id="ios-ar-toggle" style="display:none; gap:8px; justify-content:center; position:fixed; left:50%; transform:translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0) + 108px); z-index: 9999;">
-    <a id="ios-ar-link" rel="ar" href="#" style="display:inline-block; padding:10px 14px; border-radius:10px; background:#2563eb; color:#fff; font-weight:700; text-decoration:none;">Open AR (Toggle Glow)</a>
-  </div>
-
-  <div id="ar-variants" style="display:flex; gap:8px; justify-content:center; position:fixed; left:50%; transform:translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0) + 64px); z-index: 9999;">
-    <button id="ar-on">View in AR (Light ON)</button>
-    <button id="ar-off">View in AR (Light OFF)</button>
-  </div>
-
   <div id="light-controls" style="display:flex; gap:8px; justify-content:center; position:fixed; left:50%; transform:translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0) + 12px); z-index: 9999;">
     <button id="light-on">Light ON</button>
     <button id="light-off">Light OFF</button>
@@ -139,20 +129,10 @@
     const wallSpot = document.getElementById('wall-spot');
     const hsOn = document.getElementById('hs-on');
     const hsOff = document.getElementById('hs-off');
-    const arOnBtn = document.getElementById('ar-on');
-    const arOffBtn = document.getElementById('ar-off');
     const loadStatus = document.getElementById('load-status');
-    const iosArToggle = document.getElementById('ios-ar-toggle');
-    const iosArLink = document.getElementById('ios-ar-link');
 
     let targetMaterials = [];
     let isLightOn = false;
-    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    // TODO: Replace these with your actual USDZ file URLs
-    const USDZ_ON_URL = '';
-    const USDZ_OFF_URL = '';
-    // TODO: Replace with your hosted .reality file URL that contains tap-to-toggle glow behavior
-    const REALITY_URL = '';
 
     mv.addEventListener('load', () => {
       loadStatus.style.display = 'none';
@@ -164,6 +144,8 @@
       } catch (e) {
         targetMaterials = [];
       }
+      // Start with light OFF to make the ON state clearly visible
+      setEmissive(false);
     });
 
     mv.addEventListener('progress', (ev) => {
@@ -198,28 +180,13 @@
       glow.style.display = on ? 'block' : 'none';
       if (wallSpot) wallSpot.style.display = on ? 'block' : 'none';
       // Slightly increase exposure when on, keep modest to avoid washout
-      mv.setAttribute('exposure', on ? '1.1' : '1');
+      mv.setAttribute('exposure', on ? '1.2' : '1');
     }
 
     onBtn.addEventListener('click', () => setEmissive(true));
     offBtn.addEventListener('click', () => setEmissive(false));
     hsOn.addEventListener('click', () => setEmissive(true));
     hsOff.addEventListener('click', () => setEmissive(false));
-
-    function openARVariant(on) {
-      if (isIOS) {
-        const url = on ? USDZ_ON_URL : USDZ_OFF_URL;
-        if (!url) {
-          alert('USDZ URL is not set for this variant. Please provide the USDZ file URL in the code.');
-          return;
-        }
-        mv.setAttribute('ios-src', url);
-      }
-      mv.activateAR?.();
-    }
-
-    arOnBtn.addEventListener('click', () => openARVariant(true));
-    arOffBtn.addEventListener('click', () => openARVariant(false));
 
     mv.addEventListener('ar-status', (e) => {
       const s = e.detail.status;
