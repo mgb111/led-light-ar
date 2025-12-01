@@ -51,7 +51,7 @@
       model-viewer will show an AR button when AR is available on the device.
     -->
     <model-viewer
-      src="./light_off.glb"
+      src="https://pub-e46fd816b4ee497fb2f639f180c4df20.r2.dev/light_led_bulb.glb"
       alt="GE RX8 recessed can light"
       camera-controls
       reveal="auto"
@@ -62,7 +62,7 @@
       exposure="1"
       shadow-intensity="1"
       ar
-      ar-modes="scene-viewer webxr quick-look"
+      ar-modes="webxr scene-viewer quick-look"
       ar-scale="fixed"
       disable-tap
       ar-placement="wall"
@@ -145,32 +145,14 @@
     const iosArToggle = document.getElementById('ios-ar-toggle');
     const iosArLink = document.getElementById('ios-ar-link');
 
-    // Basic low-end device heuristic to ease AR tracking pressure on weak Android phones
-    const hwConcurrency = navigator.hardwareConcurrency || 4;
-    const deviceMemory = navigator.deviceMemory || 4;
-    const isAndroid = /Android/i.test(navigator.userAgent);
-    const lowEnd = isAndroid && (hwConcurrency <= 6 || deviceMemory <= 3);
-
     let targetMaterials = [];
     let isLightOn = false;
-    let inAR = false;
-    let placed = false;
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
     // TODO: Replace these with your actual USDZ file URLs
     const USDZ_ON_URL = '';
     const USDZ_OFF_URL = '';
     // TODO: Replace with your hosted .reality file URL that contains tap-to-toggle glow behavior
     const REALITY_URL = '';
-
-    // Apply dynamic performance tweaks for low-end devices
-    if (lowEnd) {
-      try {
-        // Prefer delayed rendering until user interacts
-        mv.setAttribute('reveal', 'interaction');
-        // Reduce shadow work
-        mv.setAttribute('shadow-intensity', '0.6');
-      } catch {}
-    }
 
     mv.addEventListener('load', () => {
       loadStatus.style.display = 'none';
@@ -233,8 +215,6 @@
         }
         mv.setAttribute('ios-src', url);
       }
-      // Ensure the GLB source matches the chosen variant before entering AR
-      try { mv.src = on ? './light_on.glb' : './light_off.glb'; } catch {}
       mv.activateAR?.();
     }
 
@@ -245,19 +225,7 @@
       const s = e.detail.status;
       if (s === 'session-started') {
         overlay.style.display = 'flex';
-        // Give SLAM a bit more warm-up time on low-end devices
-        const warmupMs = lowEnd ? 4500 : 3000;
-        inAR = true;
-        placed = false;
-        // Keep tap disabled during warmup to avoid early unstable placement
-        mv.setAttribute('disable-tap', '');
-        // Slightly reduce render cost further during AR on low-end devices
-        if (lowEnd) mv.setAttribute('shadow-intensity', '0.4');
-        setTimeout(() => {
-          overlay.style.display = 'none';
-          // Allow one good tap-to-place after warmup
-          mv.removeAttribute('disable-tap');
-        }, warmupMs);
+        setTimeout(() => { overlay.style.display = 'none'; }, 3000);
         // Default light OFF at start; user can toggle ON
         setEmissive(false);
         // Show AR hotspots buttons in session
@@ -268,23 +236,11 @@
         overlay.style.display = 'flex';
       } else if (s === 'session-ended' || s === 'not-presenting') {
         overlay.style.display = 'none';
-        inAR = false;
-        placed = false;
-        // Restore default render settings
-        if (lowEnd) mv.setAttribute('shadow-intensity', '0.6');
         glow.style.display = 'none';
         // Hide AR hotspots buttons when out of session
         hsOn.style.display = 'none';
         hsOff.style.display = 'none';
       }
-    });
-
-    // Lock placement after the first user tap during an active AR session
-    mv.addEventListener('click', () => {
-      if (!inAR || placed) return;
-      placed = true;
-      // Prevent further re-placement taps to keep anchor stable
-      mv.setAttribute('disable-tap', '');
     });
   </script>
 
